@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clients Dashboard</title>
+<style>
+ body{background:#121212;color:#eee;font-family:Arial,Helvetica,sans-serif;margin:0;padding:0}
+ .container{max-width:1200px;margin:auto;padding:20px}
+ h1{margin:0 0 20px;font-weight:600}
+ .filters{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-bottom:20px}
+ .filters select,.filters input{background:#1e1e1e;border:1px solid #333;border-radius:4px;padding:8px;color:#eee}
+ .btn{background:#3c3c3c;border:none;border-radius:4px;padding:8px 12px;color:#eee;cursor:pointer}
+ .btn:hover{background:#505050}
+ table{width:100%;border-collapse:collapse}
+ th,td{padding:10px;border-bottom:1px solid #333;text-align:left}
+ th{background:#1e1e1e;position:sticky;top:0}
+ tr:hover{background:#222}
+ .badge{padding:2px 6px;border-radius:4px;background:#444;color:#eee;font-size:0.8rem}
+ .pagination{margin:20px 0;text-align:center;font-size:0.9rem;color:#bbb}
+</style>
+</head>
+<body>
+<div class="container">
+ <h1>Список клиентов</h1>
+ <form method="GET" class="filters">
+   <select name="status">
+     <option value="">Все статусы</option>
+     {% for status in statuses %}
+     <option value="{{status}}" {% if request.args.get('status')==status %}selected{% endif %}>{{status}}</option>
+     {% endfor %}
+   </select>
+   <input type="text" name="search_query" placeholder="Поиск" value="{{request.args.get('search_query','')}}">
+   <button class="btn" type="submit">Фильтр</button>
+   <input type="hidden" name="sort_by" value="{{request.args.get('sort_by','id')}}">
+   <input type="hidden" name="order" value="{{request.args.get('order','desc')}}">
+ </form>
+ <table>
+  <thead>
+   <tr>
+    <th>ID</th>
+    {% if current_user.role=="admin" %}<th>Телефон</th>{% endif %}
+    <th>ФИО</th>
+    <th>Пользователь</th>
+    <th>Статус</th>
+    <th>Общая цена</th>
+    <th>Комментарий</th>
+    {% if current_user.role=="admin" %}<th onclick="sortBy('last_status_change')">Дата изменения</th>{% endif %}
+   </tr>
+  </thead>
+  <tbody>
+   {% for entry in clients %}
+   <tr class="clickable" data-href="{{ url_for('client_details', id=entry.client.id, next=request.url) }}">
+    <td>{{entry.client.id}}</td>
+    {% if current_user.role=="admin" %}<td>{{entry.client.phone}}</td>{% endif %}
+    <td>{{ entry.client.full_name }}</td>
+    <td>{{ entry.client.assigned_operator or 'Не назначен' }}</td>
+    <td><span class="badge">{{ entry.client.status }}</span></td>
+    <td>{{ entry.total_price|round(2) }} ₴</td>
+    <td>{{ (entry.client.comment[:30] + '...' if entry.client.comment and entry.client.comment|length>30 else entry.client.comment) or '-' }}</td>
+    {% if current_user.role=="admin" %}<td>{{ entry.last_status_change.strftime('%d.%m.%Y %H:%M') if entry.last_status_change else '-' }}</td>{% endif %}
+   </tr>
+   {% endfor %}
+  </tbody>
+ </table>
+ <div class="pagination">Показано {{clients|length}} из {{total_clients}}</div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded',function(){
+ document.querySelectorAll('.clickable').forEach(r=>r.addEventListener('click',()=>{window.location=r.dataset.href;}));
+});
+function sortBy(field){
+ const params=new URLSearchParams(window.location.search);
+ const order=params.get('order')==='asc'?'desc':'asc';
+ params.set('sort_by',field);params.set('order',order);window.location.search=params.toString();
+}
+</script>
+</body>
+</html>
